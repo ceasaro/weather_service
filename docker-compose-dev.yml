@@ -1,0 +1,22 @@
+version: '3'
+services:
+  app:
+    build: .
+    command: uvicorn weather_service.asgi:application --host 0.0.0.0 --reload
+    ports:
+      - 8000:8000
+    depends_on:
+      - postgis
+    environment:
+      - TZ=Europe/Amsterdam
+      - ENV=dev
+    volumes:
+      - ".:/opt/weather_service"
+
+  postgis:
+    image: mdillon/postgis:11-alpine
+    environment:
+      - POSTGRES_DB=weather_service_dev
+      - POSTGRES_USER=cropx
+      - POSTGIS_GDAL_ENABLED_DRIVERS=ENABLE_ALL
+      - POSTGIS_ENABLE_OUTDB_RASTERS=1

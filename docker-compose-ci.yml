@@ -1,0 +1,17 @@
+version: '3'
+services:
+  gunicorn:
+    build: .
+    command: py.test --ds weather_service.settings
+    depends_on:
+      - postgis
+    environment:
+      - TZ=Europe/Amsterdam
+      - ENV=ci
+  postgis:
+    image: mdillon/postgis:11-alpine
+    environment:
+      - POSTGRES_DB=weather_service_ci
+      - POSTGRES_USER=cropx
+      - POSTGIS_GDAL_ENABLED_DRIVERS=ENABLE_ALL
+      - POSTGIS_ENABLE_OUTDB_RASTERS=1

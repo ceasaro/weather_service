@@ -1,0 +1,6 @@
+Django==4.0.3
+django-extensions==3.1.5
+fastapi==0.75.0
+psycopg2==2.9.3
+uvicorn==0.17.6
+django-safe-settings==0.1.3

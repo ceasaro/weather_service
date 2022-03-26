@@ -1,0 +1,43 @@
+version: '3'
+services:
+  pre-deploy:
+    image: ${IMAGE}
+    depends_on:
+      - postgis
+    environment:
+      - TZ=Europe/Amsterdam
+      - ENV=${ENV}
+    logging:
+      driver: syslog
+      options:
+        tag: "{{.Name}}"
+  gunicorn:
+    image: ${IMAGE}
+    restart: unless-stopped
+    depends_on:
+      - postgis
+    environment:
+      - TZ=Europe/Amsterdam
+      - ENV=${ENV}
+    logging:
+      driver: syslog
+      options:
+        tag: "{{.Name}}"
+  postgis:
+    image: timescale/timescaledb-postgis:latest-pg13
+    # https://stackoverflow.com/questions/56751565/pq-could-not-resize-shared-memory-segment-no-space-left-on-device
+    shm_size: 1g
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=cropx
+      - POSTGIS_GDAL_ENABLED_DRIVERS=ENABLE_ALL
+      - POSTGIS_ENABLE_OUTDB_RASTERS=1
+    command:
+      postgres -c shared_buffers=2500MB -c work_mem=8MB -c maintenance_work_mem=128MB
+    volumes:
+      - /opt/weather_service_${ENV}/db/data:/var/lib/postgresql/data
+    logging:
+      driver: syslog
+      options:
+        tag: "{{.Name}}"
