@@ -1,5 +1,7 @@
+from datetime import date, datetime
 from statistics import mean
 
+import pytz
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models.functions import Distance
@@ -122,13 +124,17 @@ class MeasurementConsts:
 class MeasurementQuerySet(models.QuerySet):
 
     def find(self, location, start_date, end_date, meta):
+        if isinstance(start_date, date):
+            start_date = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
+        if isinstance(end_date, date):
+            end_date = datetime.combine(end_date, datetime.min.time()).replace(tzinfo=pytz.UTC)
         grouped_meta = MeasurementConsts.group_meta_by_radius(meta)
         query_set = self.none()
         for radius_in_km, meta_list in grouped_meta.items():
             query_set |= self.filter(measurement_meta__in=meta_list).within_distance(location, radius_in_km)
 
-        query_set = query_set.filter(day__range=(start_date, end_date)).filter(measurement_meta__in=meta)
-        return query_set.order_by('day')
+        query_set = query_set.filter(datetime__range=(start_date, end_date)).filter(measurement_meta__in=meta)
+        return query_set.order_by('datetime')
 
     def within_distance(self, location, max_distance_in_km):
         return self.order_by_distance(location).filter(distance__lt=max_distance_in_km * 1000)
@@ -141,7 +147,7 @@ class MeasurementQuerySet(models.QuerySet):
 
 
 class Measurement(MeasurementConsts, models.Model):
-    day = models.DateField()
+    datetime = models.DateTimeField()
     location = models.PointField(srid=4326)
     measurement_meta = models.CharField(max_length=20)
     value = models.FloatField()
@@ -151,10 +157,10 @@ class Measurement(MeasurementConsts, models.Model):
     objects = MeasurementQuerySet.as_manager()
 
     class Meta:
-        ordering = ['day', 'location', 'measurement_meta']
+        ordering = ['datetime', 'location', 'measurement_meta']
         indexes = [
-            models.Index(fields=['day', 'location'], name='day_location_idx'),
+            models.Index(fields=['datetime', 'location'], name='day_location_idx'),
         ]
 
     def __str__(self):
-        return f'{self.day} - {self.measurement_meta}'
+        return f'{self.datetime} - {self.measurement_meta}'
