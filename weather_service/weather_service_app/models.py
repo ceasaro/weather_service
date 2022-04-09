@@ -106,8 +106,29 @@ class MeasurementConsts:
         },
     }
 
+    @staticmethod
+    def group_meta_by_radius(meta):
+        grouped_meta_by_radius = {}
+        for _meta in meta:
+            meta_data = MeasurementConsts.DATA.get(_meta)
+            if not meta_data:
+                raise WeatherServiceModelException(f"Unknown measurement meta key '{_meta}'.")
+
+            meta_list = grouped_meta_by_radius.setdefault(meta_data.get('max_reach_radius_km'), [])
+            meta_list.append(_meta)
+        return grouped_meta_by_radius
+
 
 class MeasurementQuerySet(models.QuerySet):
+
+    def find(self, location, start_date, end_date, meta):
+        grouped_meta = MeasurementConsts.group_meta_by_radius(meta)
+        query_set = self.none()
+        for radius_in_km, meta_list in grouped_meta.items():
+            query_set |= self.filter(measurement_meta__in=meta_list).within_distance(location, radius_in_km)
+
+        query_set = query_set.filter(day__range=(start_date, end_date)).filter(measurement_meta__in=meta)
+        return query_set.order_by('day')
 
     def within_distance(self, location, max_distance_in_km):
         return self.order_by_distance(location).filter(distance__lt=max_distance_in_km * 1000)
