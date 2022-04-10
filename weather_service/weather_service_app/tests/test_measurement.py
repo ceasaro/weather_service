@@ -29,6 +29,16 @@ def test_group_meta_by_radius(meta_list, grouped_meta, exception):
         assert MeasurementConsts.group_meta_by_radius(meta_list) == grouped_meta
 
 
+@pytest.mark.parametrize("values, meta, expected_value", [
+    ([1, 2, 3, 4], 'AT', 2.5),
+    ([1, 2, 3, 4], 'PT', 10),
+    ([], 'RH', None),
+])
+def test_grouped_value(values, meta, expected_value):
+    assert MeasurementConsts.grouped_value(values, meta) == expected_value, \
+        f"Wrong grouped value for {values} and meta {meta}."
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize("meta_count", [
     ({'AT': 5}),
