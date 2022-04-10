@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 import pytest
 from weather_service.weather_service_app.models import WeatherServiceObject
 

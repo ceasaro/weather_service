@@ -1,6 +1,6 @@
 import pytest
 from django.contrib.gis.geos import Point
-from django.utils.dateparse import parse_date
+from django.utils.dateparse import parse_date, parse_datetime
 
 from weather_service.weather_service_app.exceptions import WeatherServiceModelException
 from weather_service.weather_service_app.models import Measurement, MeasurementConsts
@@ -53,3 +53,23 @@ def test_measurement_find(meta_count, some_air_temperature_measurements, some_pr
         assert all([m.distance.km <= max_radius_km for m in meta_measurements]), \
             f"All {meta} measurements should be within {max_radius_km}, " \
             f"distances where {[m.distance.km for m in meta_measurements]}"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('_datetime, meta_list, expected_count', [
+    ('2022-03-26T22:43:23+00:00', None, 8),
+    ('2022-03-26T22:43:23+00:00', [], 8),
+    ('2022-03-26T22:43:23+00:00', ['AT', 'PT', 'RAD_SHORT', 'WD'], 8),
+    ('2022-03-26T22:43:23+00:00', ['AT'], 5),
+    ('2022-03-26T22:43:23+00:00', ['PT'], 1),
+    ('2022-03-26T22:43:23+00:00', ['RAD_SHORT'], 2),
+    ('2022-03-26T22:43:23+00:00', ['WD'], 0),
+])
+def test_measurement_within_hour(_datetime, meta_list, expected_count, some_air_temperature_measurements,
+                                 some_precipitation_measurements, some_shortwave_radiation_measurements):
+    kwargs = {}
+    if meta_list:
+        kwargs['measurement_meta__in'] = meta_list
+    measurements = Measurement.objects.within_hour(parse_datetime(_datetime), **kwargs)
+    assert measurements.count() == expected_count, f"Unexpected amount of measurement. " \
+                                                   f"datetime: {_datetime}, meta_list: {meta_list}"

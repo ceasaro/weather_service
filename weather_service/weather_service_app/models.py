@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from statistics import mean
 
 import pytz
@@ -121,7 +121,10 @@ class MeasurementConsts:
         return grouped_meta_by_radius
 
 
-class MeasurementQuerySet(models.QuerySet):
+class BaseMeasurementQuerySet(models.QuerySet):
+
+    class Meta:
+        abstract = True
 
     def find(self, location, start_date, end_date, meta):
         if isinstance(start_date, date):
@@ -144,6 +147,19 @@ class MeasurementQuerySet(models.QuerySet):
 
     def distance(self, location):
         return self.annotate(distance=Distance("location", location))
+
+
+class MeasurementQuerySet(BaseMeasurementQuerySet):
+    def within_hour(self, _datetime, **kwargs):
+        """
+        :param _datetime: a date time
+        :return: all measurements within the hour of the given _datetime.
+                e.g. if -datetime is '2022-03-26T22:43:23'
+                all measurements between 2022-03-26T22:00:01 and 2022-03-26T23:00:00 are returned.
+        """
+        previous_hour = _datetime.replace(minute=0, second=1, microsecond=0)
+        next_hour = (previous_hour + timedelta(hours=1)).replace(second=0)
+        return self.filter(datetime__range=(previous_hour, next_hour), **kwargs)
 
 
 class Measurement(MeasurementConsts, models.Model):
