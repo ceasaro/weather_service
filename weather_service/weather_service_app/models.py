@@ -36,11 +36,11 @@ class MeasurementConsts:
     RELATIVE_HUMIDITY_AVG = 'RH_AVG'
     RELATIVE_HUMIDITY_MAX = 'RH_MAX'
     RELATIVE_HUMIDITY_MIN = 'RH_MIN'
-    WIND_DIRECTION = 'WD'  # voor uur data gemiddelde (laatste waarden tonen)
-    WIND_SPEED = 'WS'  # voor uur data gemiddelde
-    WIND_SPEED_AVG = 'WS_AVG'  # voor uur data gemiddelde
+    WIND_DIRECTION = 'WD'
+    WIND_SPEED = 'WS'
+    WIND_SPEED_AVG = 'WS_AVG'
     WIND_SPEED_GUST = 'WS_GUST'
-    WIND_SPEED_MAX = 'WS_MAX'  # voor uur data max
+    WIND_SPEED_MAX = 'WS_MAX'
 
     DATA = {
         AIR_TEMPERATURE: {
@@ -48,77 +48,89 @@ class MeasurementConsts:
             'unit': u'°C',
             'domain': [-10, 40],  # values outside the domain are considered invalid.
             'group_function': mean,
-            'max_reach_radius_km': 20,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 20,  # the maximum radius where this value is still valid to use
         },
         PRECIPITATION: {
             'name': 'Precipitation',
             'unit': 'mm',
             'domain': [0, 20],  # values outside the domain are considered invalid.
             'group_function': sum,
-            'max_reach_radius_km': 10,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 10,  # the maximum radius where this value is still valid to use
         },
         RADIATION: {
             'name': 'Radiation',
             'unit': u'Watt/m²',
             'domain': [0, 300],  # values outside the domain are considered invalid.
             'group_function': sum,
-            'max_reach_radius_km': 50,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 50,  # the maximum radius where this value is still valid to use
         },
         RADIATION_SHORTWAVE: {
             'name': 'Shortwave radiation',
             'unit': u'W/m²',
             'domain': [0, 300],  # values outside the domain are considered invalid.
             'group_function': mean,
-            'max_reach_radius_km': 50,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 50,  # the maximum radius where this value is still valid to use
         },
         RELATIVE_HUMIDITY: {
             'name': 'Relative Humidity',
             'unit': '%',
             'domain': [0, 100],  # values outside the domain are considered invalid.
             'group_function': mean,
-            'max_reach_radius_km': 20,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 20,  # the maximum radius where this value is still valid to use
         },
         WIND_DIRECTION: {
             'name': 'Wind Direction',
             'unit': u'°',
             'domain': [0, 360],  # values outside the domain are considered invalid.
             'group_function': mean,
-            'max_reach_radius_km': 30,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 30,  # the maximum radius where this value is still valid to use
         },
         WIND_SPEED: {
             'name': 'Wind Speed',
             'unit': 'm/s',
             'domain': [0, 20],  # values outside the domain are considered invalid.
             'group_function': mean,
-            'max_reach_radius_km': 30,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 30,  # the maximum radius where this value is still valid to use
         },
         WIND_SPEED_MAX: {
             'name': 'Wind Speed max',
             'unit': 'm/s',
             'domain': [0, 20],  # values outside the domain are considered invalid.
             'group_function': max,
-            'max_reach_radius_km': 30,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 30,  # the maximum radius where this value is still valid to use
         },
         WIND_SPEED_GUST: {
             'name': 'Wind Speed gust',
             'unit': 'm/s',
             'domain': [0, 20],  # values outside the domain are considered invalid.
             'group_function': max,
-            'max_reach_radius_km': 30,  # the maximum radius from where is was measured where it is still valid to use
+            'max_reach_radius_km': 30,  # the maximum radius where this value is still valid to use
         },
     }
 
     @staticmethod
-    def group_meta_by_radius(meta):
+    def group_meta_by_radius(meta_list):
         grouped_meta_by_radius = {}
-        for _meta in meta:
-            meta_data = MeasurementConsts.DATA.get(_meta)
-            if not meta_data:
-                raise WeatherServiceModelException(f"Unknown measurement meta key '{_meta}'.")
+        for _meta in meta_list:
+            meta_data = MeasurementConsts.get_meta_data(_meta)
 
             meta_list = grouped_meta_by_radius.setdefault(meta_data.get('max_reach_radius_km'), [])
             meta_list.append(_meta)
         return grouped_meta_by_radius
+
+    @staticmethod
+    def grouped_value(values, meta):
+        if values:
+            meta_data = MeasurementConsts.get_meta_data(meta)
+            group_function = meta_data.get('group_function')
+            return group_function(values)
+
+    @staticmethod
+    def get_meta_data(meta):
+        meta_data = MeasurementConsts.DATA.get(meta)
+        if not meta_data:
+            raise WeatherServiceModelException(f"Unknown measurement meta key '{meta}'.")
+        return meta_data
 
 
 class BaseMeasurementQuerySet(models.QuerySet):
@@ -180,3 +192,47 @@ class Measurement(MeasurementConsts, models.Model):
 
     def __str__(self):
         return f'{self.datetime} - {self.measurement_meta}'
+
+
+class HourlyMeasurementQuerySet(BaseMeasurementQuerySet):
+    pass
+
+
+class HourlyMeasurementManager(models.Manager):
+
+    def get_queryset(self):
+        return HourlyMeasurementQuerySet(self.model, using=self._db)
+
+    def update_or_create_from_measurement(self, measurement):
+        """
+         Hourly measurements are calculated from the past hour
+         e.g. for 15:00: all measurements from 14:00 up to and including 15:00 are used.
+
+        :param measurement:
+        :return: updated or created hourly measurement
+        """
+        measurements_within_hour = Measurement.objects.within_hour(measurement.datetime,
+                                                                   location=measurement.location,
+                                                                   measurement_meta=measurement.measurement_meta)
+        grouped_value = MeasurementConsts.grouped_value(measurements_within_hour.values_list('value', flat=True),
+                                                        measurement.measurement_meta)
+        
+        hourly_datetime = measurement.datetime.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
+        self.create(datetime=hourly_datetime, location=measurement.location, value=grouped_value,
+                    measurement_meta=measurement.measurement_meta)
+
+    def create(self, **kwargs):
+        return super().create(**kwargs)
+
+
+class HourlyMeasurement(models.Model):
+    datetime = models.DateTimeField()
+    location = models.PointField(srid=4326)
+    measurement_meta = models.CharField(max_length=20)
+    value = models.FloatField()
+
+    objects = HourlyMeasurementManager()
+
+    def __str__(self):
+        return f'HOURLY: {self.datetime} - {self.measurement_meta}'
+

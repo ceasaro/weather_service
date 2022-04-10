@@ -22,7 +22,7 @@ INSTALLED_APPS = [
     "django_safe_settings",
     "django_extensions",
     # Our apps
-    "weather_service.weather_service_app",
+    "weather_service.weather_service_app.app.WeatherServiceAppConfig",
 ]
 
 MIDDLEWARE = [
