@@ -66,6 +66,19 @@ def test_measurement_find(meta_count, some_air_temperature_measurements, some_pr
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize('_datetime, expected_count', [
+    ('2022-03-26T22:00:00+00:00',  5),
+    ('2022-03-26T22:00:01+00:00',  5),
+    ('2022-03-26T22:15:00+00:00',  5),
+    ('2022-03-26T23:00:00+00:00',  2),
+])
+def test_measurement_within_hour_time(_datetime, expected_count, some_air_temperature_measurements):
+    kwargs = {}
+    measurements = Measurement.objects.within_hour(parse_datetime(_datetime), **kwargs)
+    assert measurements.count() == expected_count, f"Unexpected amount of measurement. datetime: {_datetime}"
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize('_datetime, meta_list, expected_count', [
     ('2022-03-26T22:43:23+00:00', None, 8),
     ('2022-03-26T22:43:23+00:00', [], 8),
@@ -75,8 +88,8 @@ def test_measurement_find(meta_count, some_air_temperature_measurements, some_pr
     ('2022-03-26T22:43:23+00:00', ['RAD_SHORT'], 2),
     ('2022-03-26T22:43:23+00:00', ['WD'], 0),
 ])
-def test_measurement_within_hour(_datetime, meta_list, expected_count, some_air_temperature_measurements,
-                                 some_precipitation_measurements, some_shortwave_radiation_measurements):
+def test_measurement_within_hour_meta(_datetime, meta_list, expected_count, some_air_temperature_measurements,
+                                      some_precipitation_measurements, some_shortwave_radiation_measurements):
     kwargs = {}
     if meta_list:
         kwargs['measurement_meta__in'] = meta_list

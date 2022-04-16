@@ -167,11 +167,11 @@ class MeasurementQuerySet(BaseMeasurementQuerySet):
         :param _datetime: a date time
         :return: all measurements within the hour of the given _datetime.
                 e.g. if -datetime is '2022-03-26T22:43:23'
-                all measurements between 2022-03-26T22:00:01 and 2022-03-26T23:00:00 are returned.
+                all measurements between 2022-03-26T22:00:00 and 2022-03-26T22:59:59 are returned.
         """
-        previous_hour = _datetime.replace(minute=0, second=1, microsecond=0)
-        next_hour = (previous_hour + timedelta(hours=1)).replace(second=0)
-        return self.filter(datetime__range=(previous_hour, next_hour), **kwargs)
+        start_hour = _datetime.replace(minute=0, second=0, microsecond=0)
+        end_hour = start_hour + timedelta(hours=1)
+        return self.filter(datetime__gte=start_hour, datetime__lt=end_hour, **kwargs)
 
 
 class Measurement(MeasurementConsts, models.Model):
@@ -191,7 +191,7 @@ class Measurement(MeasurementConsts, models.Model):
         ]
 
     def __str__(self):
-        return f'{self.datetime} - {self.measurement_meta}'
+        return f'{self.datetime}: {self.measurement_meta} - {self.value}'
 
 
 class HourlyMeasurementQuerySet(BaseMeasurementQuerySet):
@@ -205,21 +205,23 @@ class HourlyMeasurementManager(models.Manager):
 
     def update_or_create_from_measurement(self, measurement):
         """
-         Hourly measurements are calculated from the past hour
-         e.g. for 15:00: all measurements from 14:00 up to and including 15:00 are used.
+         Hourly measurements are calculated from the within an hour
+         e.g. for 15:00: all measurements from 15:00:00 up to and including 15:59:59 are used.
 
         :param measurement:
         :return: updated or created hourly measurement
         """
+        print(f"measurements for {measurement}")
         measurements_within_hour = Measurement.objects.within_hour(measurement.datetime,
                                                                    location=measurement.location,
                                                                    measurement_meta=measurement.measurement_meta)
+        print(measurements_within_hour)
         grouped_value = MeasurementConsts.grouped_value(measurements_within_hour.values_list('value', flat=True),
                                                         measurement.measurement_meta)
         
-        hourly_datetime = measurement.datetime.replace(minute=0, second=0, microsecond=0) + timedelta(hours=1)
-        self.create(datetime=hourly_datetime, location=measurement.location, value=grouped_value,
-                    measurement_meta=measurement.measurement_meta)
+        hourly_datetime = measurement.datetime.replace(minute=0, second=0, microsecond=0)
+        self.update_or_create(datetime=hourly_datetime, location=measurement.location,
+                              measurement_meta=measurement.measurement_meta, defaults={'value': grouped_value})
 
     def create(self, **kwargs):
         return super().create(**kwargs)
