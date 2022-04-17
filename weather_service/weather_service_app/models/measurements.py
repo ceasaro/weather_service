@@ -8,6 +8,7 @@ from django.contrib.gis.db.models.functions import Distance
 
 from weather_service.util import BaseModel
 from weather_service.weather_service_app.exceptions import WeatherServiceModelException
+from weather_service.weather_service_app.models.providers import WeatherStation
 
 User = settings.AUTH_USER_MODEL
 
@@ -179,8 +180,8 @@ class Measurement(MeasurementConsts, models.Model):
     location = models.PointField(srid=4326)
     measurement_meta = models.CharField(max_length=20)
     value = models.FloatField()
-    data_provider = models.ForeignKey(User, blank=True, null=True, related_name='measurements',
-                                      on_delete=models.SET_NULL)
+    station = models.ForeignKey(WeatherStation, blank=True, null=True, related_name='measurements',
+                                on_delete=models.SET_NULL)
 
     objects = MeasurementQuerySet.as_manager()
 
