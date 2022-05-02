@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     "django_extensions",
     # Our apps
     "weather_service.weather_service_app.app.WeatherServiceAppConfig",
+    "weather_service.performance",
 ]
 
 MIDDLEWARE = [
@@ -54,10 +55,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "weather_service.wsgi.application"
+DATABASE_PERFORMANCE_TEST = "performance"
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+    },
+    DATABASE_PERFORMANCE_TEST: {
+        'ENGINE': 'django.contrib.gis.db.backends.postgis',
+        'NAME': 'weather_service_performance',
+        'USER': 'cees',
+        'PASSWORD': 'welkom',
+        'HOST': '127.0.0.1',
+        'PORT': '5438',
     }
 }
 

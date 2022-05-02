@@ -6,8 +6,9 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.contrib.gis.db.models.functions import Distance
 
-from weather_service.util import BaseModel
+
 from weather_service.weather_service_app.exceptions import WeatherServiceModelException
+from weather_service.weather_service_app.models.abstact import BaseModel
 from weather_service.weather_service_app.models.providers import WeatherStation
 
 User = settings.AUTH_USER_MODEL
@@ -186,6 +187,7 @@ class Measurement(MeasurementConsts, models.Model):
     objects = MeasurementQuerySet.as_manager()
 
     class Meta:
+        unique_together = ['datetime', 'location', 'measurement_meta']
         ordering = ['datetime', 'location', 'measurement_meta']
         indexes = [
             models.Index(fields=['datetime', 'location'], name='day_location_idx'),

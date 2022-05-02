@@ -1,11 +1,8 @@
 from datetime import datetime, timezone
-from typing import Union
 
 import pydantic
-from pydantic.datetime_parse import parse_datetime
 
-import uuid
-from django.db import models
+from weather_service.utils.datetime_utils import parse_datetime_in_millis
 
 
 def snake2camel(snake: str) -> str:
@@ -43,31 +40,3 @@ class APIModel(pydantic.BaseModel):
         allow_population_by_field_name = True
         alias_generator = snake2camel
         json_encoders = {datetime: DateTimeInMillis.to_int}
-
-
-def parse_datetime_in_millis(
-    value: Union[datetime, str, bytes, int, float]
-) -> datetime:
-    """
-    Parse a datetime/int/float/string in millis and return a datetime.datetime,
-    fall back on datetime strings
-    """
-    if isinstance(value, datetime):
-        return value
-    if isinstance(value, bytes):
-        value = value.decode()
-    if isinstance(value, str):
-        try:
-            value = float(value)
-        except ValueError:
-            return parse_datetime(value)
-    return datetime.fromtimestamp(value / 1000)
-
-
-class BaseModel(models.Model):
-    created = models.DateTimeField(auto_now_add=True)
-    updated = models.DateTimeField(auto_now=True)
-    uuid = models.UUIDField(default=uuid.uuid4)
-
-    class Meta:
-        abstract = True

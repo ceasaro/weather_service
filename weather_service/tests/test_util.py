@@ -1,6 +1,6 @@
 import pytest
 
-from weather_service.util import snake2camel
+from weather_service.utils.util import snake2camel
 
 
 @pytest.mark.parametrize('snake_str, camel_str', [

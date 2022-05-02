@@ -4,7 +4,6 @@ from fastapi import APIRouter
 
 from .models import WeatherServiceObject
 from .schemas import WeatherServiceObjectDTO, CreateWeatherServiceObject
-from ..util import parse_datetime_in_millis
 
 router = APIRouter()
 

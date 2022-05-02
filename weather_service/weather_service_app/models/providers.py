@@ -1,6 +1,6 @@
 from django.contrib.gis.db import models
 
-from weather_service.util import BaseModel
+from weather_service.weather_service_app.models.abstact import BaseModel
 
 
 class Provider(BaseModel):

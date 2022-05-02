@@ -1,7 +1,7 @@
 from typing import Optional
 from uuid import UUID
 
-from weather_service.util import APIModel, DateTimeInMillis
+from weather_service.utils.util import APIModel, DateTimeInMillis
 
 
 class WeatherServiceObjectBase(APIModel):
